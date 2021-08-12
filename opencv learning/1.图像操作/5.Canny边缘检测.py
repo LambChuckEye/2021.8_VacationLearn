@@ -28,7 +28,7 @@ def show(img):
 # 5) 通过抑制孤立的弱边缘最终完成边缘检测。
 img = cv2.imread("data\lena.jpg", cv2.IMREAD_GRAYSCALE)
 
-## minVal,maxVal
+# 两个参数为minVal,maxVal
 v1 = cv2.Canny(img, 80, 150)
 v2 = cv2.Canny(img, 50, 100)
 
