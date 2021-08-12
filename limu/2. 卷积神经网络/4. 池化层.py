@@ -22,8 +22,8 @@ pool2d(X, (2, 2), 'avg')
 
 # ==================================================================
 # 填充和步幅
-X = torch.arange(16, dtype=torch.float32).reshape((1, 1, 4, 4))
 
+X = torch.arange(16, dtype=torch.float32).reshape((1, 1, 4, 4))
 # 默认3x3最大池化层
 pool2d = nn.MaxPool2d(3)
 pool2d(X)
