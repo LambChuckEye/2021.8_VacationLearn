@@ -1,40 +1,63 @@
 import torch
-from matplotlib import pyplot as plt
 from torch import nn
-from d2l import torch as d2l
-import warnings
-warnings.filterwarnings("ignore")
-
-# 处理输入图像，通道数为1，尺寸为 28x28
-class Reshape(torch.nn.Module):
-    def forward(self, x):
-        return x.view(-1, 1, 28, 28)
+import time
+import numpy as np
 
 
-# 网络模型
-net = torch.nn.Sequential(
-    Reshape(),
-    nn.Conv2d(1, 6, kernel_size=5, padding=2), nn.Sigmoid(),
-    nn.AvgPool2d(kernel_size=2, stride=2),
-    nn.Conv2d(6, 16, kernel_size=5), nn.Sigmoid(),
-    nn.AvgPool2d(kernel_size=2, stride=2),
-    nn.Flatten(),
-    nn.Linear(16 * 5 * 5, 120), nn.Sigmoid(),
-    nn.Linear(120, 84), nn.Sigmoid(),
-    nn.Linear(84, 10))
+# 计时器
+class Timer:  # @save
+    """记录多次运行时间。"""
 
-# 检查模型
-# X = torch.rand(size=(28, 28), dtype=torch.float32)
-# for layer in net:
-#     X = layer(X)
-#     print(layer.__class__.__name__, 'output shape: \t', X.shape)
+    def __init__(self):
+        self.times = []
+        self.start()
+
+    def start(self):
+        """启动计时器。"""
+        self.tik = time.time()
+
+    def stop(self):
+        """停止计时器并将时间记录在列表中。"""
+        self.times.append(time.time() - self.tik)
+        return self.times[-1]
+
+    def avg(self):
+        """返回平均时间。"""
+        return sum(self.times) / len(self.times)
+
+    def sum(self):
+        """返回时间总和。"""
+        return sum(self.times)
+
+    def cumsum(self):
+        """返回累计时间。"""
+        return np.array(self.times).cumsum().tolist()
 
 
-# ============================================================
-# 训练
-batch_size = 256
-# 获取mnist数据集
-train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size=batch_size)
+# 累加器
+class Accumulator:  # @save
+    """在`n`个变量上累加。"""
+
+    def __init__(self, n):
+        self.data = [0.0] * n
+
+    def add(self, *args):
+        self.data = [a + float(b) for a, b in zip(self.data, args)]
+
+    def reset(self):
+        self.data = [0.0] * len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx]
+
+
+# 准确数量计算
+def accuracy(y_hat, y):  # @save
+    """计算预测正确的数量。"""
+    if len(y_hat.shape) > 1 and y_hat.shape[1] > 1:
+        y_hat = y_hat.argmax(axis=1)
+    cmp = y_hat.type(y.dtype) == y
+    return float(cmp.type(y.dtype).sum())
 
 
 # 评估函数
@@ -45,7 +68,7 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):  # @save
         if not device:
             device = next(iter(net.parameters())).device
     # 正确预测的数量，总预测的数量
-    metric = d2l.Accumulator(2)
+    metric = Accumulator(2)
     for X, y in data_iter:
         # 将数据转移到gpu上
         if isinstance(X, list):
@@ -53,7 +76,7 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):  # @save
         else:
             X = X.to(device)
         y = y.to(device)
-        metric.add(d2l.accuracy(net(X), y), y.numel())
+        metric.add(accuracy(net(X), y), y.numel())
     return metric[0] / metric[1]
 
 
@@ -75,11 +98,11 @@ def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
     # 损失函数
     loss = nn.CrossEntropyLoss()
     # 时间戳
-    timer, num_batches = d2l.Timer(), len(train_iter)
+    timer, num_batches = Timer(), len(train_iter)
 
     for epoch in range(num_epochs):
         # 训练损失之和，训练准确率之和，范例数
-        metric = d2l.Accumulator(3)
+        metric = Accumulator(3)
         # 训练模式
         net.train()
         # for i , x in enumerate(X):    返回序号和对象
@@ -93,22 +116,16 @@ def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
             optimizer.step()  # 迭代赋值
             # 每个mini-batch后评估并绘图
             with torch.no_grad():
-                metric.add(l * X.shape[0], d2l.accuracy(y_hat, y), X.shape[0])
+                metric.add(l * X.shape[0], accuracy(y_hat, y), X.shape[0])
             timer.stop()
             train_l = metric[0] / metric[2]
             train_acc = metric[1] / metric[2]
             # if (i + 1) % (num_batches // 5) == 0 or i == num_batches - 1:
             #     print(f'    epoch {epoch + 1},batch {i + 1}, loss {train_l:f},train acc {train_acc:f}')
-        # 每一个epoch后进行评估并绘图
+        # 每一个epoch后进行评估
         test_acc = evaluate_accuracy_gpu(net, test_iter)
         print(f'epoch {epoch + 1}, loss {train_l:f},train acc {train_acc:f},test acc {test_acc}')
     print(f'loss {train_l:.3f}, train acc {train_acc:.3f}, '
           f'test acc {test_acc:.3f}')
     print(f'{metric[2] * num_epochs / timer.sum():.1f} examples/sec '
           f'on {str(device)}')
-
-
-lr, num_epochs = 0.9, 10
-
-if __name__ == '__main__':
-    train_ch6(net, train_iter, test_iter, num_epochs, lr, d2l.try_gpu())
