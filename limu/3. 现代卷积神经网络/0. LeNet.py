@@ -15,7 +15,7 @@ class Reshape(torch.nn.Module):
 
 
 # 网络模型
-net = torch.nn.Sequential(
+net1 = torch.nn.Sequential(
     Reshape(),
     nn.Conv2d(1, 6, kernel_size=5, padding=2), nn.Sigmoid(),
     nn.AvgPool2d(kernel_size=2, stride=2),
@@ -61,4 +61,4 @@ train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size=batch_size)
 lr, num_epochs = 0.9, 10
 
 if __name__ == '__main__':
-    MyTools.train_ch6(net, train_iter, test_iter, num_epochs, lr, d2l.try_gpu())
+    MyTools.train_ch6(net1, train_iter, test_iter, num_epochs, lr, d2l.try_gpu())

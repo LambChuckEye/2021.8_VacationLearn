@@ -86,7 +86,7 @@ numeric_features = all_features.dtypes[all_features.dtypes != 'object'].index
 # 对所有数字项进行标准化
 all_features[numeric_features] = all_features[numeric_features].apply(
     lambda x: (x - x.mean()) / (x.std()))
-# 对缺失值填充0，在标准化数据之后，所有数据都意味着消失，因此我们可以将缺失值设置为0
+# 对缺失值填充0，在标准化数据之后，所有非数字数据都消失，因此我们可以将缺失值设置为0
 all_features[numeric_features] = all_features[numeric_features].fillna(0)
 
 # 独热编码处理离散值
