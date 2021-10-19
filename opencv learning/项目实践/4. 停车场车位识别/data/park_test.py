@@ -3,7 +3,6 @@ import cv2
 import os, glob
 
 from d2l.torch import d2l
-from tensorflow.keras.models import load_model
 import torch
 import torchvision
 from matplotlib import pyplot as plt
@@ -77,24 +76,19 @@ def img_process(test_images, park):
     return final_spot_dict
 
 
-def keras_model(weights_path):
-    model = load_model(weights_path)
-    return model
-
-
-def img_test(test_images, final_spot_dict, model, class_dictionary):
+def img_test(test_images, final_spot_dict, model, class_dictionary, device):
     for i in range(len(test_images)):
-        predicted_images = park.predict_on_image(test_images[i], final_spot_dict, model, class_dictionary)
+        predicted_images = park.predict_on_image(test_images[i], final_spot_dict, model, class_dictionary, device)
 
 
-def video_test(video_name, final_spot_dict, model, class_dictionary):
+def video_test(video_name, final_spot_dict, model, class_dictionary, device):
     name = video_name
     cap = cv2.VideoCapture(name)
-    park.predict_on_video(name, final_spot_dict, model, class_dictionary, ret=True)
+    park.predict_on_video(name, final_spot_dict, model, class_dictionary, device, ret=True)
 
 
 if __name__ == '__main__':
-
+    print(d2l.try_gpu())
     test_images = [plt.imread(path) for path in glob.glob('test_images/*.jpg')]
     video_name = 'parking_video.mp4'
     class_dictionary = {}
@@ -108,11 +102,10 @@ if __name__ == '__main__':
 
     # 加载网络模型
     net = torch.load('net')
-    net.to(d2l.try_gpu())
 
     # 加载车位信息
     f = open('spot_dict.pickle', 'rb')
     final_spot_dict = pickle.load(f)
 
-    img_test(test_images, final_spot_dict, net, class_dictionary)
-    video_test(video_name, final_spot_dict, net, class_dictionary)
+    img_test(test_images, final_spot_dict, net, class_dictionary, d2l.try_gpu())
+    # video_test(video_name, final_spot_dict, net, class_dictionary)

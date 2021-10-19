@@ -1,14 +1,28 @@
 import os
 
+import d2l.torch
 import numpy as np
 import torch
 import torchvision
 from matplotlib import pyplot as plt
 from torch import nn
-from d2l import torch as d2l
+
 import MyTools
 import warnings
 from PIL import Image
+
+
+def try_gpu(i=0):
+    if torch.cuda.device_count() >= i + 1:
+        return torch.device(f'cuda:{i}')
+    return torch.device('cpu')
+
+
+def try_all_gpus():
+    devices = [torch.device(f'cuda:{i}')
+               for i in range(torch.cuda.device_count())]
+    return devices if devices else [torch.device('cpu')]
+
 
 warnings.filterwarnings("ignore")
 
@@ -42,7 +56,7 @@ def train(net, learning_rate, batch_size=128, num_epochs=10,
         shuffle=True)
     test_iter = torch.utils.data.DataLoader(
         torchvision.datasets.ImageFolder('train_data/test', transform=test_augs), batch_size=batch_size)
-    devices = d2l.try_all_gpus()
+    devices = try_all_gpus()
     loss = nn.CrossEntropyLoss(reduction='none')
     if param_group:
         params = [param for name, param in net.named_parameters() if name not in ['fc.weight', 'fc.bias']]
@@ -54,24 +68,25 @@ def train(net, learning_rate, batch_size=128, num_epochs=10,
     MyTools.train_ch13(net, train_iter, test_iter, loss, trainer, num_epochs, devices)
 
 
-def load(image):
+def load(image, device):
     image = torch.unsqueeze(image, 0)
-    image = image.cuda()
+    # gpu
+    image = image.to(device)
     y_hat = net(image).argmax(axis=1)
     return y_hat
 
 
 if __name__ == '__main__':
-    train(net, 5e-5)
+    # train(net, 5e-5)
     # 存储模型
-    torch.save(net, 'net')
+    # torch.save(net, 'net')
     # 加载模型
-    # net = torch.load('net')
+    net = torch.load('net')
 
     test_iter = torchvision.datasets.ImageFolder('train_data/train', transform=test_augs)
 
     for i in range(8):
-        print(load(test_iter[-i - 1][0]))
+        print(load(test_iter[-i - 1][0], try_gpu()))
         print('--------')
-        print(load(test_iter[i][0]))
+        print(load(test_iter[i][0], try_gpu()))
         print('=====')

@@ -280,7 +280,7 @@ class Parking:
             cv2.imwrite(os.path.join(folder_name, filename), spot_img)
 
     # 神经网络预测
-    def make_prediction(self, image, net, class_dictionary):
+    def make_prediction(self, image, net, class_dictionary, device):
 
         # 预变换
         test_augs = torchvision.transforms.Compose([
@@ -298,7 +298,7 @@ class Parking:
         # 添加批量维度
         image = torch.unsqueeze(image, 0)
         # 移至GPU
-        image = image.cuda()
+        image = image.to(device)
         # 统计预测值
         inID = net(image).argmax(axis=1)
         # 提取tensor中的数据
@@ -308,7 +308,8 @@ class Parking:
         return label
 
     # 神经网络识别
-    def predict_on_image(self, image, spot_dict, model, class_dictionary, make_copy=True, color=[0, 255, 0], alpha=0.5):
+    def predict_on_image(self, image, spot_dict, model, class_dictionary, device, make_copy=True, color=[0, 255, 0],
+                         alpha=0.5):
         if make_copy:
             new_image = np.copy(image)
             overlay = np.copy(image)
@@ -323,7 +324,7 @@ class Parking:
             spot_img = image[y1:y2, x1:x2]
 
             # 神经网络预测
-            label = self.make_prediction(spot_img, model, class_dictionary)
+            label = self.make_prediction(spot_img, model, class_dictionary, device)
 
             # 标记空车位位置
             if label == 'empty':
@@ -351,7 +352,7 @@ class Parking:
 
         return new_image
 
-    def predict_on_video(self, video_name, final_spot_dict, model, class_dictionary, ret=True):
+    def predict_on_video(self, video_name, final_spot_dict, model, class_dictionary, device, ret=True):
         cap = cv2.VideoCapture(video_name)
         count = 0
         while ret:
@@ -376,7 +377,7 @@ class Parking:
                     spot_img = image[y1:y2, x1:x2]
                     spot_img = cv2.resize(spot_img, (48, 48))
                     # 预测
-                    label = self.make_prediction(spot_img, model, class_dictionary)
+                    label = self.make_prediction(spot_img, model, class_dictionary, device)
                     if label == 'empty':
                         cv2.rectangle(overlay, (int(x1), int(y1)), (int(x2), int(y2)), color, -1)
                         cnt_empty += 1
